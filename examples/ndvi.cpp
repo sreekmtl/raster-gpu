@@ -2,11 +2,18 @@
 #include <string>
 #include <dlfcn.h>
 #include "gdal/gdal_priv.h"
+#include "gdal/cpl_string.h"
 
 
 using namespace std;
 
 typedef void (*NormalizedIndicesFunc)(float* band1, float* band2, float* result, size_t numPixels);
+
+void normalizedIndiceCpu(float* band1, float* band2, float* result, size_t size){
+    for (size_t i=0; i<size; i++){
+        result[i]= (band1[i]-band2[i])/(band1[i]+band2[i]);
+    }
+}
 
 int main(){
 
@@ -24,6 +31,12 @@ int main(){
 
     int xSize= imageDataset->GetRasterXSize();
     int ySize= imageDataset->GetRasterYSize();
+
+    double geotransform[6];
+    imageDataset->GetGeoTransform(geotransform);
+    const char* projection= imageDataset->GetProjectionRef();
+
+
 
     size_t numPixels= static_cast<size_t>(xSize*ySize);
 
@@ -57,12 +70,25 @@ int main(){
     }
 
     normalized_indices(nirData, redData, result, numPixels);
+    //normalizedIndiceCpu(nirData, redData, result, numPixels);
 
 
-    //print first 100 pixel values
-    for (size_t i=0; i<1000; i++){
-        cout<<result[i]<<" ";
-    }
+    //writing final output
+    GDALDataset* outputDataset;
+    GDALDriver* driver;
+    driver= GetGDALDriverManager()->GetDriverByName("GTiff");
+    char** opts= NULL;
+    opts = CSLSetNameValue(opts, "COMPRESS", "DEFLATE");
+    outputDataset= driver->Create("./data/ndvi2.tif", xSize, ySize, 1, GDT_Float32, opts);
+    outputDataset->SetGeoTransform(geotransform);
+    outputDataset->SetProjection(projection);
+
+    GDALRasterBand* ndvi;
+    ndvi= outputDataset->GetRasterBand(1);
+    CPLErr err3= ndvi->RasterIO(GF_Write, 0, 0, xSize, ySize, result, xSize, ySize, GDT_Float32, 0, 0);
+    GDALClose(outputDataset);
+    CSLDestroy(opts);
+
 
     delete[] nirData;
     delete[] redData;

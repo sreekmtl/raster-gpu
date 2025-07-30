@@ -129,25 +129,37 @@ void Interpolation::bilinear(){
      }
 
      //now lets reflect left and right
+     //since we already padded top and bottom,
+     //while we pad left and right, we can just reflect the top and bottom padded regions too
+     //This is easy and straightforward
      for (size_t i=0; i<pad; i++){
+        
+        for (size_t j=0; j<padded_height; j++){
+
+            //left
+            paddedImage[j*padded_width + i]= paddedImage[j * padded_width + (2*pad)- (i+1)];
+
+            //right
+            paddedImage[(j+1)*padded_width - i]= paddedImage[(j+1)* padded_width - (2*pad -i)];
+        }
         
      }
 
      
 
      //Get the scaling factor
-     float scaleX= ip.originalWidth/ip.targetWidth;
-     float scaleY= ip.originalHeight/ip.targetHeight;
+     float scaleX= padded_width/ip.targetWidth;
+     float scaleY= padded_height/ip.targetHeight;
 
      for (size_t i=0; i<ip.totalResampledPixels; i++){
 
-        size_t y= i/ip.targetWidth;  //geight pos
+        size_t y= i/ip.targetWidth;  //height pos
         size_t x= i%ip.targetWidth;  //width pos
 
 
         //now we have to map the location from src image
-        size_t xSrc= round(x*scaleX);
-        size_t ySrc= round(y*scaleY);
+        float xSrc= x*scaleX;
+        float ySrc= y*scaleY;
 
         //Taking locations of four pixels mentioned in the comment
         //top-left (x_floor, y_floor)
@@ -155,10 +167,10 @@ void Interpolation::bilinear(){
         //bottom-left (x_floor, y_ceil)
         //bottom-right (x_ceil, y_ceil)
 
-        size_t tl= static_cast<size_t>(floor(ySrc)*ip.originalWidth + floor(xSrc));
-        size_t tr= static_cast<size_t>(floor(ySrc)*ip.originalWidth + ceil(xSrc));
-        size_t bl= static_cast<size_t>(ceil(ySrc)*ip.originalWidth + floor(xSrc));
-        size_t br= static_cast<size_t>(ceil(ySrc)* ip.originalWidth + ceil(xSrc));
+        size_t tl= static_cast<size_t>(floor(ySrc)*padded_width + floor(xSrc));
+        size_t tr= static_cast<size_t>(floor(ySrc)*padded_width + ceil(xSrc));
+        size_t bl= static_cast<size_t>(ceil(ySrc)*padded_width + floor(xSrc));
+        size_t br= static_cast<size_t>(ceil(ySrc)* padded_width + ceil(xSrc));
 
         //we also have to ensure everything is within bounds, if not take position -1 
 

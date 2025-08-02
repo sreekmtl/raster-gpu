@@ -1,27 +1,10 @@
 #ifndef INTERPOLATION_HPP
 #define INTERPOLATION_HPP
 
+#include <string>
+using namespace std;
+
 #pragma once
-class Interpolation{
-
-    public:
-        float* srcGrid;
-        float* targetGrid;
-        const char* interpolationMehtod;
-        interpolationParams ip;
-
-        Interpolation(float* srcData, float* targetGrid, interpolationParams interParams, const char* InterpolationMethod);
-        ~Interpolation();
-
-        void nearestNeighbour();
-
-        void bilinear();
-
-        void bicubic();
-
-    private:
-
-};
 
 struct interpolationParams{
 
@@ -35,6 +18,27 @@ struct interpolationParams{
             size_t totalResampledPixels;
 
         };
+
+
+class Interpolation{
+
+    public:
+        float* srcGrid;
+        float* targetGrid;
+        interpolationParams ip;
+
+        Interpolation(float* srcData, float* targetGrid, interpolationParams interParams, string InterpolationMethod);
+        ~Interpolation();
+
+        void nearestNeighbour();
+
+        void bilinear();
+
+        void bicubic();
+
+    private:
+
+};
 
 
 #endif

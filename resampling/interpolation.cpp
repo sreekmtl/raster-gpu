@@ -1,22 +1,24 @@
 #include <iostream>
 #include <cmath>
+#include <string>
 #include "interpolation.hpp"
 
 using namespace std;
 
-Interpolation::Interpolation(float* srcData, float* targetGrid, interpolationParams interParams, const char* interpolationMethod){
+Interpolation::Interpolation(float* srcData, float* targetData, interpolationParams interParams, string interpolationMethod){
 
-    srcData= srcData;
-    targetGrid= targetGrid;
+    srcGrid= srcData;
+    targetGrid= targetData;
     ip= interParams;
-    
-    
-    interpolationMethod= interpolationMethod;
 
     if (interpolationMethod=="nn"){
+        cout<<"Using Nearest Neighbour method"<<endl;
         nearestNeighbour();
+        
     }else if (interpolationMethod=="bl"){
+        cout<<"Using Bilinear method"<<endl;
         bilinear(); //have to implement bicubic and lanczos
+        
     }else{
         cerr<<"Invalid interpolation method"<<endl;
     }
@@ -42,12 +44,12 @@ void Interpolation::nearestNeighbour(){
      * so for each pixel in the target grid we have to find a pixel value.
      */
 
-     float scaleX= ip.originalWidth/ip.targetWidth;
-     float scaleY= ip.originalHeight/ip.targetHeight;
+     float scaleX= static_cast<float>(ip.originalWidth)/ip.targetWidth;
+     float scaleY= static_cast<float>(ip.originalHeight)/ip.targetHeight;
+
 
 
      for (size_t i=0; i<ip.totalResampledPixels;i++){
-
         //we have to map pixel now to its col-row position
         //In this current iteration i think since we are querying contigous pix location it will be fast
         //so after crossing each width of image, height will increase by 1
@@ -56,8 +58,8 @@ void Interpolation::nearestNeighbour(){
         size_t x= i%ip.targetWidth; //width pos
 
         //now we have to map the location from src image
-        size_t xSrc= round(x*scaleX);
-        size_t ySrc= round(y*scaleY);
+        size_t xSrc= static_cast<size_t>(round(x*scaleX));
+        size_t ySrc= static_cast<size_t>(round(y*scaleY));
 
         //so in upscaling, we will be having more pixels in targetimage
         //so if resampling factor is 2, then 1 pixel value will appear in 4 nearby pixels in target grid
@@ -78,6 +80,7 @@ void Interpolation::nearestNeighbour(){
         }
 
         size_t srcPixelPosition= static_cast<size_t>((ySrc * ip.originalWidth) + xSrc); 
+
         targetGrid[i]= srcGrid[srcPixelPosition];
         
 

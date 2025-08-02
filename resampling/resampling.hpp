@@ -8,6 +8,13 @@
 
 #pragma once
 
+struct resampledImage{
+    
+    size_t xSize;
+    size_t ySize;
+    float* resampledData;
+};
+
 class Resample{
 
     public:
@@ -18,7 +25,7 @@ class Resample{
         Resample(size_t width, size_t height, float srcPixSize, float dstPIxSize, const char* interpolation);
         ~Resample();
 
-        void resampleImage(float* srcImageData, float* resampledImageData);
+        resampledImage resampleImage(float* srcImageData);
 
     private:
         float resamplingFactor;
@@ -31,5 +38,7 @@ class Resample{
 
 
 };
+
+
 
 #endif

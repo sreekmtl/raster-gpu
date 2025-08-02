@@ -3,3 +3,6 @@
 *.tiff
 *.so
 *ndvi
+*.xml
+
+data/

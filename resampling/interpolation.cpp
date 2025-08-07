@@ -151,8 +151,8 @@ void Interpolation::bilinear(){
      
 
      //Get the scaling factor
-     float scaleX= padded_width/ip.targetWidth;
-     float scaleY= padded_height/ip.targetHeight;
+     float scaleX= static_cast<float>(ip.originalWidth)/ip.targetWidth;
+     float scaleY= static_cast<float>(ip.originalHeight)/ip.targetHeight;
 
      for (size_t i=0; i<ip.totalResampledPixels; i++){
 
@@ -161,8 +161,9 @@ void Interpolation::bilinear(){
 
 
         //now we have to map the location from src image
-        float xSrc= x*scaleX;
-        float ySrc= y*scaleY;
+        //here we are not rounding bcos we rounded in nn bcos its `nearest` neighbiur
+        float xSrc= x*scaleX+pad;
+        float ySrc= y*scaleY+pad;
 
         //Taking locations of four pixels mentioned in the comment
         //top-left (x_floor, y_floor)
@@ -170,25 +171,35 @@ void Interpolation::bilinear(){
         //bottom-left (x_floor, y_ceil)
         //bottom-right (x_ceil, y_ceil)
 
-        size_t tl= static_cast<size_t>(floor(ySrc)*padded_width + floor(xSrc));
-        size_t tr= static_cast<size_t>(floor(ySrc)*padded_width + ceil(xSrc));
-        size_t bl= static_cast<size_t>(ceil(ySrc)*padded_width + floor(xSrc));
-        size_t br= static_cast<size_t>(ceil(ySrc)* padded_width + ceil(xSrc));
+        //One thing we have to notice is if my pixel pos is 10.2 and 2.1, then this works correctly as floor and ceil pixel values are different
+        //But if my pixel position is 10.0 and 2.0, then problem bcos both floor and ceil gives same value
 
-        //we also have to ensure everything is within bounds, if not take position -1 
+        float x0= floor(xSrc);
+        float y0= floor(ySrc);
 
-        //get the actual values from this 4 locations. we are extracting values from the padded image
-        float v1= paddedImage[bl];
-        float v2= paddedImage[tr];
-        float v3= paddedImage[tl];
-        float v4= paddedImage[br];
+        float x1= x0+1;
+        float y1= y0+1;
 
-        float q1= v1 * (ceil(xSrc) - xSrc) + v2 * (xSrc - floor(xSrc));
-        float q2= v3 * (ceil(xSrc) - xSrc) + v4 * (xSrc - floor(xSrc));
+        //dx and dy are calculated to decide the weightage that we have to multipy
+        float dx= xSrc-x0;
+        float dy= ySrc-y0;
 
-        float q= q1 * (ceil(ySrc) - y) + q2 * (ySrc - floor(ySrc));
+        // Clamp x1 and y1 to avoid going out of bounds
+        if (x1 >= padded_width) x1 = padded_width - 1;
+        if (y1 >= padded_height) y1 = padded_height - 1;
 
-        targetGrid[i]= q;
+        size_t tl= static_cast<size_t>(y0*padded_width + x0);
+        size_t tr= static_cast<size_t>(y0*padded_width + x1);
+        size_t bl= static_cast<size_t>(y1*padded_width + x0);
+        size_t br= static_cast<size_t>(y1* padded_width + x1);
+
+
+        float top= paddedImage[tl]* (1-dx) + paddedImage[tr]*dx;
+        float bottom= paddedImage[bl]* (1-dx) + paddedImage[br]*dx;
+
+        float val= top* (1-dy) + bottom*dy;
+
+        targetGrid[i]= val;
         
      }
 

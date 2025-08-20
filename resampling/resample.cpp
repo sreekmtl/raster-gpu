@@ -43,7 +43,7 @@ int main(){
 
     cout<<"Starting Resampling"<<endl;
 
-    Resample resampler(xSize, ySize, geotransform[1], 5, "bl");
+    Resample resampler(xSize, ySize, geotransform[1], 5, "bc");
     cout<<xSize<<" "<<ySize<<endl;
     resampledImage resampledBand= resampler.resampleImage(nirData);  //resampler retruns data and dimensions of resampled data
 
@@ -54,7 +54,7 @@ int main(){
     driver= GetGDALDriverManager()->GetDriverByName("GTiff");
     char** opts= NULL;
     opts = CSLSetNameValue(opts, "COMPRESS", "DEFLATE");
-    outputDataset= driver->Create("./res_bl.tif", resampledBand.xSize, resampledBand.ySize, 1, GDT_Float32, opts);
+    outputDataset= driver->Create("./res_bc.tif", resampledBand.xSize, resampledBand.ySize, 1, GDT_Float32, opts);
     geotransform[1]=5.0;
     geotransform[5]=-5.0;
     outputDataset->SetGeoTransform(geotransform);

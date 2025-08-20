@@ -2,6 +2,9 @@
 #include <cmath>
 #include <string>
 #include "interpolation.hpp"
+#include "utils.hpp"
+#include "commons.hpp"
+#include <cstdint>
 
 using namespace std;
 
@@ -19,6 +22,10 @@ Interpolation::Interpolation(float* srcData, float* targetData, interpolationPar
         cout<<"Using Bilinear method"<<endl;
         bilinear(); //have to implement bicubic and lanczos
         
+    }else if (interpolationMethod=="bc"){
+        cout<<"Using Bicubic method"<<endl;
+        bicubic();
+
     }else{
         cerr<<"Invalid interpolation method"<<endl;
     }
@@ -103,52 +110,7 @@ void Interpolation::bilinear(){
      //Here i am adding reflection padding by default
      //since we are considering 4 pixels around pixel in original image, i will be adding 1 pixel padding
      size_t pad= 1;
-     size_t padded_width= ip.originalWidth + (2*pad);   //adding padding to top and bottom
-     size_t padded_height= ip.originalHeight + (2*pad); //adding padding to left and right
-     size_t padded_size= padded_width*padded_height;
-
-     float* paddedImage= new float[padded_size]();
-     //fill the inner part 
-     size_t k=0;
-     for (size_t i=pad; i<padded_height-pad; i++){
-        for (size_t j=pad; j<padded_width-pad; j++){
-            size_t pos= i * padded_width + j;
-            paddedImage[pos]= srcGrid[k];
-            k++;
-        }
-     }
-
-     //now fill the padded area using reflction
-     //first we reflect top and bottom
-     for (size_t i=0; i<pad; i++){
-        for (size_t j=pad; j<padded_width-pad; j++){
-            //top
-            paddedImage[i*padded_width+j]= paddedImage[(2* pad-i)* padded_width + j];
-
-            //bottom
-            paddedImage[(padded_height-1-i)* padded_width + j]= paddedImage[(padded_height - 1 - 2 * pad + i) * padded_width + j];
-        }
-
-     }
-
-     //now lets reflect left and right
-     //since we already padded top and bottom,
-     //while we pad left and right, we can just reflect the top and bottom padded regions too
-     //This is easy and straightforward
-     for (size_t i=0; i<pad; i++){
-        
-        for (size_t j=0; j<padded_height; j++){
-
-            //left
-            paddedImage[j*padded_width + i]= paddedImage[j * padded_width + (2*pad)- (i+1)];
-
-            //right
-            paddedImage[(j+1)*padded_width - i]= paddedImage[(j+1)* padded_width - (2*pad -i)];
-        }
-        
-     }
-
-     
+     imageData paddedImage= padImage(srcGrid, ip.originalWidth, ip.originalHeight, 1);
 
      //Get the scaling factor
      float scaleX= static_cast<float>(ip.originalWidth)/ip.targetWidth;
@@ -174,6 +136,9 @@ void Interpolation::bilinear(){
         //One thing we have to notice is if my pixel pos is 10.2 and 2.1, then this works correctly as floor and ceil pixel values are different
         //But if my pixel position is 10.0 and 2.0, then problem bcos both floor and ceil gives same value
 
+        //Here eqn is p(unknown)= p1q1+p2q2
+        //where q1= (1-x) and q2=x if 1 is distance between two pixels
+
         float x0= floor(xSrc);
         float y0= floor(ySrc);
 
@@ -185,17 +150,20 @@ void Interpolation::bilinear(){
         float dy= ySrc-y0;
 
         // Clamp x1 and y1 to avoid going out of bounds
-        if (x1 >= padded_width) x1 = padded_width - 1;
-        if (y1 >= padded_height) y1 = padded_height - 1;
+        if (x1 >= paddedImage.width) x1 = paddedImage.width - 1;
+        if (y1 >= paddedImage.height) y1 = paddedImage.height - 1;
 
-        size_t tl= static_cast<size_t>(y0*padded_width + x0);
-        size_t tr= static_cast<size_t>(y0*padded_width + x1);
-        size_t bl= static_cast<size_t>(y1*padded_width + x0);
-        size_t br= static_cast<size_t>(y1* padded_width + x1);
+        if (y0 < 0) y0=0;
+        if (x0 < 0) x0=0;
+
+        size_t tl= static_cast<size_t>(y0*paddedImage.width + x0);
+        size_t tr= static_cast<size_t>(y0*paddedImage.width + x1);
+        size_t bl= static_cast<size_t>(y1*paddedImage.width + x0);
+        size_t br= static_cast<size_t>(y1* paddedImage.width + x1);
 
 
-        float top= paddedImage[tl]* (1-dx) + paddedImage[tr]*dx;
-        float bottom= paddedImage[bl]* (1-dx) + paddedImage[br]*dx;
+        float top= paddedImage.data[tl]* (1-dx) + paddedImage.data[tr]*dx;
+        float bottom= paddedImage.data[bl]* (1-dx) + paddedImage.data[br]*dx;
 
         float val= top* (1-dy) + bottom*dy;
 
@@ -203,6 +171,132 @@ void Interpolation::bilinear(){
         
      }
 
-     delete [] paddedImage;
+     delete [] paddedImage.data;
 
+}
+
+void Interpolation::bicubic(){
+
+    /**
+     * Bicubic interpolation method
+     * 
+     * Here we iterate through each pixel in the target grid
+     * For each pixel in the target grid, we have to find the replacement pixel from the srcgrid.
+     * For bilinear we took 4 pixels, from srcgrid to interpolate. Here we have to take 16 pixels from src grid.
+     * While taking 16 pixels, we have to ensure all these pixels are within bounds
+     */
+
+     //Here i am adding reflection padding by default
+     //since we are taking 16 pixels, i will be adding 2 pixel padding
+     size_t pad= 2;
+     imageData paddedImage= padImage(srcGrid, ip.originalWidth, ip.originalHeight, pad);
+
+     //Get the scaling factor
+     float scaleX= static_cast<float>(ip.originalWidth)/ip.targetWidth;
+     float scaleY= static_cast<float>(ip.originalHeight)/ip.targetHeight;
+
+     for (size_t i=0; i<ip.totalResampledPixels;i++){
+
+        size_t y= i/ip.targetWidth; //height pos
+        size_t x= i%ip.targetWidth; //width pos
+
+        //now we have to map the location from src image
+        //here we are not rounding similar to nn
+        float xSrc= x*scaleX+pad;
+        float ySrc= y*scaleY+pad;
+
+        //Taking locations of 16 pixel position
+        //Here eqn is p(unknown)= p1q1+p2q2+p3q3+p4q4
+        //number coming after vairable have to be considered as power
+        //q1= (-x3+2x2-x)/2 |  q2= (3t3-5t2+2)/2 
+        //q3= (-3t3+4t2+t)/2 | q4= (t3-t2)/2
+
+        //pixel coordinates of immediate neighbours
+        //top-left pixel coordinates
+        float x0= floor(xSrc);
+        float y0= floor(ySrc);
+
+        //bottom-right pixel coordinates
+        float x1= x0+1;
+        float y1= y0+1;
+
+        //pixel coordinates of distant neighbours
+        //distant top-left neighbours
+        float x2= x0-1;
+        float y2= y0-1;
+
+        //distant bottom-right neighbours
+        float x3= x1+1;
+        float y3= y1+1;
+
+        //dx and dy are calculated so we get the x value in the basis function in x direction
+        //and y value in the basis function in y direction
+
+        float dx= xSrc-x0;
+        float dy= ySrc-y0;
+
+        //clamp all above positions to avoid going out of bounds
+        if (x1>= paddedImage.width) x1= paddedImage.width-1;
+        if (y1>= paddedImage.height) y1= paddedImage.height-1;
+
+        if (x3>= paddedImage.width) x3= paddedImage.width-1;
+        if (y3>= paddedImage.height) y3= paddedImage.height-1;
+
+        // if (x2 < 0) x2=0;
+        // if (y2 < 0) y2=0;
+
+        //now we have to find the positions of 16 pixel position
+        //for that we are going to loop
+
+        size_t p1= static_cast<size_t>(y2*paddedImage.width+x2);
+        size_t p2= static_cast<size_t>(y2*paddedImage.width+x0);
+        size_t p3= static_cast<size_t>(y2*paddedImage.width+x1);
+        size_t p4= static_cast<size_t>(y2*paddedImage.width+x3);
+
+        size_t p5= static_cast<size_t>(y0*paddedImage.width+x2);
+        size_t p6= static_cast<size_t>(y0*paddedImage.width+x0);
+        size_t p7= static_cast<size_t>(y0*paddedImage.width+x1);
+        size_t p8= static_cast<size_t>(y0*paddedImage.width+x3);
+
+        size_t p9= static_cast<size_t>(y1*paddedImage.width+x2);
+        size_t p10= static_cast<size_t>(y1*paddedImage.width+x0);
+        size_t p11= static_cast<size_t>(y1*paddedImage.width+x1);
+        size_t p12= static_cast<size_t>(y1*paddedImage.width+x3);
+
+        size_t p13= static_cast<size_t>(y3*paddedImage.width+x2);
+        size_t p14= static_cast<size_t>(y3*paddedImage.width+x0);
+        size_t p15= static_cast<size_t>(y3*paddedImage.width+x1);
+        size_t p16= static_cast<size_t>(y3*paddedImage.width+x3);
+        
+        //hotizontal weights
+        float dx2= dx*dx;
+        float dx3= dx2*dx;
+        
+        float h1 = (-dx3 + 2*dx2 - dx) / 2.0f;
+        float h2 = (3*dx3 - 5*dx2 + 2) / 2.0f;
+        float h3 = (-3*dx3 + 4*dx2 + dx) / 2.0f;
+        float h4 = (dx3 - dx2) / 2.0f;
+
+        float row1= static_cast<float>(paddedImage.data[p1])*h1 + static_cast<float>(paddedImage.data[p2])*h2 + static_cast<float>(paddedImage.data[p3])*h3 + static_cast<float>(paddedImage.data[p4])*h4;
+        float row2= static_cast<float>(paddedImage.data[p5])*h1 + static_cast<float>(paddedImage.data[p6])*h2 + static_cast<float>(paddedImage.data[p7])*h3 + static_cast<float>(paddedImage.data[p8])*h4;
+        float row3= static_cast<float>(paddedImage.data[p9])*h1 + static_cast<float>(paddedImage.data[p10])*h2 + static_cast<float>(paddedImage.data[p11])*h3 + static_cast<float>(paddedImage.data[p12])*h4;
+        float row4= static_cast<float>(paddedImage.data[p13])*h1 + static_cast<float>(paddedImage.data[p14])*h2 + static_cast<float>(paddedImage.data[p15])*h3 + static_cast<float>(paddedImage.data[p16])*h4;
+
+        //vertical weights
+        float dy2= dy*dy;
+        float dy3= dy2*dy;
+        float v1= (-dy3+ 2*dy2- dy)/2.0f;
+        float v2= (3*dy3- 5*dy2+2)/2.0f;
+        float v3= (-3*dy3+ 4*dy2 + dy)/2.0f;
+        float v4= (dy3-dy2)/2.0f;
+
+        float val = v1*row1 + v2*row2 + v3*row3 + v4*row4;
+        val = std::min(std::max(val, 0.0f), 65535.0f);
+        targetGrid[i] = static_cast<uint16_t>(val);
+
+
+     }
+
+     delete [] paddedImage.data;
+     
 }

@@ -2,22 +2,10 @@
 #define INTERPOLATION_HPP
 
 #include <string>
+#include "commons.hpp"
 using namespace std;
 
 #pragma once
-
-struct interpolationParams{
-
-            size_t originalWidth;
-            size_t originalHeight;
-
-            size_t targetWidth;
-            size_t targetHeight;
-
-            size_t totalPixels;
-            size_t totalResampledPixels;
-
-        };
 
 
 class Interpolation{
@@ -27,7 +15,7 @@ class Interpolation{
         float* targetGrid;
         interpolationParams ip;
 
-        Interpolation(float* srcData, float* targetGrid, interpolationParams interParams, string InterpolationMethod);
+        Interpolation(float* srcData, float* targetGrid, interpolationParams interParams, string InterpolationMethod, string device);
         ~Interpolation();
 
         void nearestNeighbour();

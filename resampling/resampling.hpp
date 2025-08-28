@@ -25,7 +25,7 @@ class Resample{
         Resample(size_t width, size_t height, float srcPixSize, float dstPIxSize, const char* interpolation);
         ~Resample();
 
-        resampledImage resampleImage(float* srcImageData);
+        resampledImage resampleImage(float* srcImageData,const char* device);
 
     private:
         float resamplingFactor;

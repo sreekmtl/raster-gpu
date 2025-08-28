@@ -45,7 +45,7 @@ int main(){
 
     Resample resampler(xSize, ySize, geotransform[1], 5, "bc");
     cout<<xSize<<" "<<ySize<<endl;
-    resampledImage resampledBand= resampler.resampleImage(nirData);  //resampler retruns data and dimensions of resampled data
+    resampledImage resampledBand= resampler.resampleImage(nirData, "CUDA");  //resampler retruns data and dimensions of resampled data
 
     //now write resampled dataset as a new imagedataset
     //writing final output

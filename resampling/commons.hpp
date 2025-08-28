@@ -15,4 +15,17 @@ struct imageData{
 
 };
 
+struct interpolationParams{
+
+            size_t originalWidth;
+            size_t originalHeight;
+
+            size_t targetWidth;
+            size_t targetHeight;
+
+            size_t totalPixels;
+            size_t totalResampledPixels;
+
+        };
+
 #endif

@@ -48,7 +48,7 @@ Resample::~Resample(){
 
 }
 
-resampledImage Resample::resampleImage(float* srcImageData){
+resampledImage Resample::resampleImage(float* srcImageData, const char* device){
 
     /**
      * We have the srcimage data and details, targetgrid and details
@@ -56,7 +56,7 @@ resampledImage Resample::resampleImage(float* srcImageData){
      * AS OF NOW ONLY IMPLEMENTING NEAREST NEIGHBOUR
      */
 
-    Interpolation interpolator(srcImageData, resampledGrid, ip, interpolationMethod);
+    Interpolation interpolator(srcImageData, resampledGrid, ip, interpolationMethod, device);
     //interpolator.nearestNeighbour();
     resampledImage ri;
     ri.xSize=ip.targetWidth;

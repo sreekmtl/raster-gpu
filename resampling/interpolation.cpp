@@ -8,23 +8,29 @@
 
 using namespace std;
 
-Interpolation::Interpolation(float* srcData, float* targetData, interpolationParams interParams, string interpolationMethod){
+Interpolation::Interpolation(float* srcData, float* targetData, interpolationParams interParams, string interpolationMethod, string device){
 
     srcGrid= srcData;
     targetGrid= targetData;
     ip= interParams;
 
-    if (interpolationMethod=="nn"){
+    if (interpolationMethod=="nn" && device=="cpu"){
         cout<<"Using Nearest Neighbour method"<<endl;
         nearestNeighbour();
         
-    }else if (interpolationMethod=="bl"){
+    }else if (interpolationMethod=="bl" && device=="cpu"){
         cout<<"Using Bilinear method"<<endl;
         bilinear(); //have to implement bicubic and lanczos
         
-    }else if (interpolationMethod=="bc"){
+    }else if (interpolationMethod=="bc" && device=="cpu"){
         cout<<"Using Bicubic method"<<endl;
         bicubic();
+
+    }else if (interpolationMethod=="bc" && device=="cuda"){
+        cout<<"Using Bicubic along with CUDA"<<endl;
+        //ACTUALLY WE HAVE TO KEEP COMPILED CUDA SO SEPERATELY AND HAVE TO CALL HERE AT RUNTIME OR COMPILE TIME
+        //FOR EASE, I AM JUST CALLING HERE
+        
 
     }else{
         cerr<<"Invalid interpolation method"<<endl;
